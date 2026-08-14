@@ -1,0 +1,41 @@
+openapi: 3.1.0
+info:
+  title: Open Legal Services Reference API
+  version: 0.1.0
+  description: Provider-neutral research contract for confidential and auditable legal-service workflows.
+servers:
+  - url: https://api.example.org/open-legal-services/v1
+paths:
+  /legal-cases/{id}:
+    get:
+      operationId: getLegalCase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: X-Correlation-ID
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Domain resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResource'
+        '404': { description: Not found }
+components:
+  schemas:
+    DomainResource:
+      type: object
+      required: [id, schema_version, status, updated_at]
+      properties:
+        id: { type: string }
+        schema_version: { type: string, const: '1.0' }
+        status: { type: string }
+        updated_at: { type: string, format: date-time }
+        metadata:
+          type: object
+          additionalProperties: true
