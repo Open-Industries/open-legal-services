@@ -1,0 +1,56 @@
+# document-catalog-service — Deployment + Service + HPA.
+# Config arrives via environment variables (12-Factor III); secrets are referenced, never embedded.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-catalog-service
+  namespace: legal
+  labels: { app: document-catalog-service, app.kubernetes.io/part-of: open-legal-services }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: document-catalog-service } }
+  template:
+    metadata:
+      labels: { app: document-catalog-service }
+    spec:
+      containers:
+        - name: document-catalog-service
+          image: quay.io/open-industries/document-catalog-service:latest  # replaced by the promoted release digest
+          ports: [{ containerPort: 8084, name: http }]
+          env:
+            - { name: HTTP_PORT, value: "8084" }
+            - { name: LOG_LEVEL, value: "INFO" }
+            - name: DB_URL
+              valueFrom: { secretKeyRef: { name: document-catalog-service-db, key: url, optional: true } }
+          resources:
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+          livenessProbe:
+            httpGet: { path: /q/health/live, port: http }
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: { path: /q/health/ready, port: http }
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-catalog-service
+  namespace: legal
+  labels: { app: document-catalog-service }
+spec:
+  selector: { app: document-catalog-service }
+  ports: [{ name: http, port: 8084, targetPort: http }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: document-catalog-service
+  namespace: legal
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: document-catalog-service }
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }

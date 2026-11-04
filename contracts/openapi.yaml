@@ -1,41 +1,66 @@
 openapi: 3.1.0
 info:
-  title: Open Legal Services Reference API
-  version: 0.1.0
-  description: Provider-neutral research contract for confidential and auditable legal-service workflows.
+  title: Open Legal Services — Reference Legal Practice Core Platform — aggregate contract
+  version: 1.0.0
+  description: >
+    Aggregate view of the platform's public REST contracts. The normative per-service
+    contracts are generated from code by Quarkus SmallRye OpenAPI at `/openapi` on each
+    service; CI diffs them against this file (see docs/api/api-standards.md).
+    Conventions: RFC 9457 errors, Idempotency-Key on creates, lifecycle transitions
+    take no body, explicit units on every quantity, all data synthetic.
 servers:
-  - url: https://api.example.org/open-legal-services/v1
+  - url: https://api.example.org/api/v1
+    description: Production (per adopter)
+security:
+  - bearerAuth: []
 paths:
-  /legal-cases/{id}:
-    get:
-      operationId: getLegalCase
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-        - name: X-Correlation-ID
-          in: header
-          required: true
-          schema: { type: string, format: uuid }
+  /matters:
+    post:
+      operationId: create-matter
+      summary: "Matter registry; the client reference is masked at intake."
       responses:
-        '200':
-          description: Domain resource
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainResource'
-        '404': { description: Not found }
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/Problem' }
+  /retainers:
+    post:
+      operationId: create-retainer
+      summary: "Guarded retainer balances per matter and the time charges against them."
+      responses:
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/Problem' }
+  /deadline-rules:
+    post:
+      operationId: create-deadlines
+      summary: "Decision rules binding matter types to filing-window and extension envelopes."
+      responses:
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/Problem' }
+  /documents:
+    post:
+      operationId: create-document
+      summary: "Document catalogue — metadata only, never content."
+      responses:
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/Problem' }
+  /notifications:
+    post:
+      operationId: dispatch-notification
+      summary: Dispatch a notification
+      responses:
+        '202': { description: Accepted }
 components:
-  schemas:
-    DomainResource:
-      type: object
-      required: [id, schema_version, status, updated_at]
-      properties:
-        id: { type: string }
-        schema_version: { type: string, const: '1.0' }
-        status: { type: string }
-        updated_at: { type: string, format: date-time }
-        metadata:
-          type: object
-          additionalProperties: true
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  responses:
+    Problem:
+      description: RFC 9457 problem details
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status]
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }

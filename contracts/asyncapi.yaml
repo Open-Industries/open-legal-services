@@ -1,22 +1,58 @@
-asyncapi: 3.0.0
+asyncapi: 2.6.0
 info:
-  title: Open Legal Services Reference Events
-  version: 0.1.0
+  title: Open Legal Services — Reference Legal Practice Core Platform — Domain Events
+  version: 1.0.0
+  description: >
+    CloudEvents 1.0 envelopes published by the platform's bounded contexts.
+    Consumers MUST be idempotent and tolerate unknown fields. Ordering is
+    guaranteed only per aggregate (the CloudEvent `subject`).
+servers:
+  production:
+    url: kafka://broker.legal.svc.cluster.local:9092
+    protocol: kafka
+    description: Kafka-backed Knative Broker in production; Knative Broker abstraction elsewhere.
 channels:
-  domainEvents:
-    address: open-legal-services.domain-events.v1
-    messages:
-      domainEvent:
-        $ref: '#/components/messages/DomainEvent'
-operations:
-  receiveDomainEvent:
-    action: receive
-    channel:
-      $ref: '#/channels/domainEvents'
+  matter.created:
+    publish:
+      operationId: on-matter-created
+      message: { $ref: '#/components/messages/Generic' }
+  retainer.created:
+    publish:
+      operationId: on-retainer-created
+      message: { $ref: '#/components/messages/Generic' }
+  deadlines.created:
+    publish:
+      operationId: on-deadlines-created
+      message: { $ref: '#/components/messages/Generic' }
+  document.created:
+    publish:
+      operationId: on-document-created
+      message: { $ref: '#/components/messages/Generic' }
+  notification.created:
+    publish:
+      operationId: on-notification-created
+      message: { $ref: '#/components/messages/Generic' }
+  matterrisk.evaluated:
+    publish:
+      operationId: on-matterrisk-evaluated
+      message: { $ref: '#/components/messages/Generic' }
+  deadlinecheck.evaluated:
+    publish:
+      operationId: on-deadlinecheck-evaluated
+      message: { $ref: '#/components/messages/Generic' }
 components:
   messages:
-    DomainEvent:
-      name: LegalCaseUpdated
-      contentType: application/cloudevents+json
-      payload:
-        $ref: './cloudevents/domain-event.schema.json'
+    Generic: { payload: { $ref: '#/components/schemas/CloudEvent' } }
+  schemas:
+    CloudEvent:
+      type: object
+      required: [specversion, id, source, type, time]
+      properties:
+        specversion: { type: string, enum: ['1.0'] }
+        id: { type: string, format: uuid }
+        source: { type: string, example: '/open-legal-services/service' }
+        type: { type: string, example: 'context.event' }
+        subject: { type: string, description: Aggregate id (ordering key). }
+        time: { type: string, format: date-time }
+        datacontenttype: { type: string, enum: [application/json] }
+        data: { type: object }
